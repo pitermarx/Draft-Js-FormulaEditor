@@ -2,7 +2,8 @@ import { EditorState, Modifier } from "draft-js";
 import { sanitizeChars, getEntity, insertAtomicBlocks } from "./utils";
 import {
   createObjectBubbleEntity,
-  createFunctionBubbleEntity
+  createFunctionBubbleEntity,
+  createObjSugestionBubbleEntity
 } from "./bubbleUtils";
 
 export default function onChange(chars: string, editorState?: EditorState) {
@@ -52,6 +53,13 @@ export default function onChange(chars: string, editorState?: EditorState) {
     editorState,
     /[A-Z]+/,
     createFunctionBubbleEntity
+  );
+
+  // create suggestion bubbles
+  editorState = insertAtomicBlocks(
+    editorState,
+    /(\[\d+:?\d*|\[\d*)([^\]])/,
+    createObjSugestionBubbleEntity
   );
   return editorState;
 }

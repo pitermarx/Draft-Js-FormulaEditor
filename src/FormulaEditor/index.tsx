@@ -1,5 +1,5 @@
 import React from "react";
-import { Map } from "immutable";
+import * as immutable from "immutable";
 import {
   Editor,
   EditorState,
@@ -9,9 +9,11 @@ import {
 } from "draft-js";
 
 import Debugger from "../Debugger";
-import { stateToFormula } from "./utils";
+import { stateToFormula, getSelectionKey, deleteBlock } from "./utils";
 import onChange from "./onChange";
 import Atom from "./Atom";
+import { BubbleType } from "./bubbleUtils";
+import ObjSelector from "./ObjSelector";
 
 interface IFormulaEditorProps {
   value?: string;
@@ -22,35 +24,21 @@ interface IFormulaEditorProps {
 
 // change atomic blocks to spans (instead of "figure")
 const extendedBlockRenderMap = DefaultDraftBlockRenderMap.merge(
-  Map({ atomic: { element: "span" } })
+  immutable.Map({ atomic: { element: "span" } })
 );
-
-const blockRender = ({ getObjectName, getPropertyName }: IFormulaEditorProps) =>
-  function(b: ContentBlock) {
-    if (b.getText() === "")
-      // Renders empty blocks as null to prevent newlines
-      return { component: () => null };
-
-    if (b.getType() === "atomic") {
-      return {
-        component: Atom,
-        props: {
-          getObjectName,
-          getPropertyName
-        }
-      };
-    }
-  };
 
 interface IFormulaEditorState {
   editorState: EditorState;
   formula: string;
+  focusKey?: string;
+  focusType?: BubbleType;
 }
 
 export default class extends React.Component<
   IFormulaEditorProps,
   IFormulaEditorState
 > {
+  entities = new Map<string, () => ClientRect>();
   constructor(p: IFormulaEditorProps) {
     super(p);
     this.state = {
@@ -62,16 +50,24 @@ export default class extends React.Component<
   static getDerivedStateFromProps = (
     newProps: IFormulaEditorProps,
     prevState?: IFormulaEditorState
-  ) =>
-    (!prevState || newProps.value !== prevState.formula) && {
-      editorState: onChange(newProps.value),
-      formula: newProps.value
-    };
+  ) => {
+    if (!prevState || newProps.value !== prevState.formula) {
+      const editorState = onChange(newProps.value);
+      return {
+        editorState,
+        focusedEntity: getSelectionKey(editorState),
+        formula: newProps.value
+      };
+    }
+
+    return null;
+  };
 
   onChange = (editorState: EditorState) => {
     const formula = stateToFormula(editorState);
-    this.setState({ editorState, formula });
-    if (this.state.formula !== formula) {
+    const focus = getSelectionKey(editorState);
+    this.setState({ editorState, formula, ...focus });
+    if (this.props.onChange && this.state.formula !== formula) {
       this.props.onChange(formula);
     }
   };
@@ -96,7 +92,22 @@ export default class extends React.Component<
             editorState={this.state.editorState}
             onChange={this.onChange}
             blockRenderMap={extendedBlockRenderMap}
-            blockRendererFn={blockRender(this.props)}
+            blockRendererFn={(b: ContentBlock) => {
+              if (b.getText() === "")
+                // Renders empty blocks as null to prevent newlines
+                return { component: () => null };
+
+              if (b.getType() === "atomic") {
+                return {
+                  component: Atom,
+                  props: {
+                    getObjectName: this.props.getObjectName,
+                    getPropertyName: this.props.getPropertyName,
+                    entities: this.entities
+                  }
+                };
+              }
+            }}
             // prevent newlines
             handleReturn={() => "handled"}
             handleBeforeInput={this.handleChar}
@@ -115,6 +126,18 @@ export default class extends React.Component<
             item={() => this.state.editorState.getSelection()}
           />
         </div>
+        {this.state.focusType !== "function" && (
+          <ObjSelector
+            getRect={this.entities.get(this.state.focusKey)}
+            onClick={text => {
+              const state = deleteBlock(
+                this.state.focusKey,
+                this.state.editorState
+              );
+              this.onChange(onChange(text + " ", state));
+            }}
+          />
+        )}
       </>
     );
   }

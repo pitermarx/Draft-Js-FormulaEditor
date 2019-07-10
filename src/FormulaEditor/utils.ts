@@ -6,7 +6,7 @@ import {
   ContentBlock
 } from "draft-js";
 
-import { selectRegex } from "./selectionUtils";
+import { selectRegex, selectBlock } from "./selectionUtils";
 
 export const stateToFormula = (editorState: EditorState): string =>
   sanitizeChars(editorState.getCurrentContent().getPlainText());
@@ -50,4 +50,44 @@ export function insertAtomicBlocks(
   editorState = insertAtomicBlocks(editorState, pattern, createEntity);
 
   return editorState;
+}
+
+export function getSelectionKey(
+  editorState: EditorState
+): { focusKey?; focusType? } {
+  const selection = editorState.getSelection();
+
+  const anchor = selection.getAnchorKey();
+  const focus = selection.getFocusKey();
+
+  if (anchor !== focus) {
+    return;
+  }
+
+  const content = editorState.getCurrentContent();
+  const block = content.getBlockForKey(anchor);
+  const entity = getEntity(content, block);
+  return entity && block.getType() === "atomic"
+    ? { focusKey: anchor, focusType: entity.getType() }
+    : {};
+}
+
+export function deleteBlock(
+  key: string,
+  editorState: EditorState
+): EditorState {
+  let content = editorState.getCurrentContent();
+  const block = content.getBlockForKey(key);
+  content = Modifier.removeRange(
+    content,
+    selectBlock(block, block.getLength()),
+    "backward"
+  );
+
+  content = Modifier.setBlockType(
+    content,
+    content.getSelectionAfter(),
+    "unstyled"
+  );
+  return EditorState.push(editorState, content, "remove-range");
 }

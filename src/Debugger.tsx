@@ -3,7 +3,7 @@ import { convertToRaw } from "draft-js";
 
 const toJSON = (o, sep = " ") => {
   o = typeof o === "function" ? o() : o;
-  if (o.entityMap) o = convertToRaw(o);
+  if (o && o.entityMap) o = convertToRaw(o);
   return o && <pre>{JSON.stringify(o, null, sep)}</pre>;
 };
 
