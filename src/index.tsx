@@ -5,13 +5,13 @@ import "draft-js/dist/Draft.css";
 import "./styles.css";
 import FormulaEditor from "./FormulaEditor";
 
-const objectNamesCache = {
+const objCache = {
   "1": "uno",
   "2": "dos",
   "3": "tres"
 };
 
-const propNamesCache = {
+const propCache = {
   "85": "present-value"
 };
 const log = x => {
@@ -25,8 +25,8 @@ const App = () => {
     <FormulaEditor
       value={formula}
       onChange={f => setFormula(log(f))}
-      getObjectName={id => Promise.resolve(objectNamesCache[id] || id)}
-      getPropertyName={id => Promise.resolve(propNamesCache[id] || id)}
+      getObjectName={id => Promise.resolve(objCache[id] || id)}
+      getPropertyName={id => Promise.resolve(propCache[id] || id)}
     />
   );
 };
