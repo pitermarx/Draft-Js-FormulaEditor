@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 
 import "draft-js/dist/Draft.css";
 import "./styles.css";
+
 import FormulaEditor from "./FormulaEditor";
 
 const objCache = {

@@ -1,5 +1,4 @@
 import React from "react";
-import * as immutable from "immutable";
 import {
   Editor,
   EditorState,
@@ -8,11 +7,11 @@ import {
   ContentBlock
 } from "draft-js";
 
-import Debugger from "../Debugger";
-import { stateToFormula, getSelectionKey, deleteBlock } from "./utils";
-import onChange from "./onChange";
-import Atom from "./Atom";
-import { BubbleType } from "./bubbleUtils";
+import Debugger from "./Debugger";
+import { stateToFormula, getSelectionKey, deleteBlock } from "./Formula/utils";
+import onChange from "./Formula/onChange";
+import Atom from "./Formula/Atom";
+import { BubbleType } from "./Formula/bubbleUtils";
 import ObjSelector from "./ObjSelector";
 
 interface IFormulaEditorProps {
@@ -23,9 +22,9 @@ interface IFormulaEditorProps {
 }
 
 // change atomic blocks to spans (instead of "figure")
-const extendedBlockRenderMap = DefaultDraftBlockRenderMap.merge(
-  immutable.Map({ atomic: { element: "span" } })
-);
+const extendedBlockRenderMap = DefaultDraftBlockRenderMap.set("atomic", {
+  element: "span"
+});
 
 interface IFormulaEditorState {
   editorState: EditorState;
