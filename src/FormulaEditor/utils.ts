@@ -2,8 +2,10 @@ import {
   EditorState,
   Modifier,
   AtomicBlockUtils,
-  ContentState
+  ContentState,
+  ContentBlock
 } from "draft-js";
+
 import { selectRegex } from "./selectionUtils";
 
 export const stateToFormula = (editorState: EditorState): string =>
@@ -12,58 +14,15 @@ export const stateToFormula = (editorState: EditorState): string =>
 export const sanitizeChars = (chars: string): string =>
   chars.replace(/[^a-zA-Z0-9[()+-\\*:\s\]]/g, "");
 
-export function onChange(chars: string, editorState?: EditorState) {
-  editorState = editorState || EditorState.createEmpty();
-  let content = editorState.getCurrentContent();
-  let selection = editorState.getSelection();
+export const getEntity = (content: ContentState, block: ContentBlock) => {
+  const entityKey = block.getEntityAt(0);
+  return entityKey && content.getEntity(entityKey);
+};
 
-  // prevent invalid chars
-  chars = sanitizeChars(chars);
-
-  // prevent typing inside an atomic block or across blocs
-  if (selection.getAnchorKey() !== selection.getFocusKey()) {
-    return editorState;
-  }
-  const focusedBlock = content.getBlockForKey(selection.getAnchorKey());
-  if (focusedBlock.getType() === "atomic") {
-    const entityKey = focusedBlock.getEntityAt(0);
-    if (content.getEntity(entityKey).getMutability() === "IMMUTABLE") {
-      return editorState;
-    } else {
-      content = Modifier.setBlockType(content, selection, "unstyled");
-    }
-  }
-
-  // if selection is not collapsed, delete content first
-  if (!selection.isCollapsed()) {
-    content = Modifier.removeRange(content, selection, "backward");
-    editorState = EditorState.push(editorState, content, "remove-range");
-    selection = editorState.getSelection();
-  }
-
-  // insert text
-  content = Modifier.insertText(content, selection, chars);
-  editorState = EditorState.push(editorState, content, "insert-characters");
-
-  editorState = insertAtomicBlocks(
-    editorState,
-    /\[\d+:?\d*\]/,
-    (c: ContentState) => c.createEntity("object-bubble", "IMMUTABLE")
-  );
-
-  editorState = insertAtomicBlocks(
-    editorState,
-    /[A-Z]+/,
-    (content: ContentState) => content.createEntity("function", "MUTABLE")
-  );
-
-  return editorState;
-}
-
-function insertAtomicBlocks(
+export function insertAtomicBlocks(
   editorState: EditorState,
   pattern: RegExp,
-  createEntity: (ContentState) => ContentState
+  createEntity: (ContentState, string?) => ContentState
 ) {
   let content = editorState.getCurrentContent();
 
@@ -81,7 +40,7 @@ function insertAtomicBlocks(
   content = Modifier.removeRange(content, selectRegex(key, match), "backward");
   editorState = EditorState.push(editorState, content, "remove-range");
 
-  content = createEntity(content);
+  content = createEntity(content, match[0]);
   editorState = AtomicBlockUtils.insertAtomicBlock(
     editorState,
     content.getLastCreatedEntityKey(),

@@ -1,4 +1,5 @@
 import React from "react";
+import { Map } from "immutable";
 import {
   Editor,
   EditorState,
@@ -6,9 +7,10 @@ import {
   DraftHandleValue,
   ContentBlock
 } from "draft-js";
-import { Map } from "immutable";
+
 import Debugger from "../Debugger";
-import { stateToFormula, onChange } from "./utils";
+import { stateToFormula } from "./utils";
+import onChange from "./onChange";
 import Atom from "./Atom";
 
 interface IFormulaEditorProps {
@@ -23,15 +25,22 @@ const extendedBlockRenderMap = DefaultDraftBlockRenderMap.merge(
   Map({ atomic: { element: "span" } })
 );
 
-function blockRender(b: ContentBlock) {
-  if (b.getText() === "")
-    // Renders empty blocks as null to prevent newlines
-    return { component: () => null };
+const blockRender = ({ getObjectName, getPropertyName }: IFormulaEditorProps) =>
+  function(b: ContentBlock) {
+    if (b.getText() === "")
+      // Renders empty blocks as null to prevent newlines
+      return { component: () => null };
 
-  if (b.getType() === "atomic") {
-    return { component: Atom };
-  }
-}
+    if (b.getType() === "atomic") {
+      return {
+        component: Atom,
+        props: {
+          getObjectName,
+          getPropertyName
+        }
+      };
+    }
+  };
 
 interface IFormulaEditorState {
   editorState: EditorState;
@@ -84,10 +93,10 @@ export default class extends React.Component<
           }}
         >
           <Editor
-            blockRenderMap={extendedBlockRenderMap}
-            blockRendererFn={blockRender}
             editorState={this.state.editorState}
             onChange={this.onChange}
+            blockRenderMap={extendedBlockRenderMap}
+            blockRendererFn={blockRender(this.props)}
             // prevent newlines
             handleReturn={() => "handled"}
             handleBeforeInput={this.handleChar}
@@ -96,7 +105,7 @@ export default class extends React.Component<
             }
           />
         </div>
-        <div style={{ marginTop: 30, display: "flex" }}>
+        <div style={{ marginTop: 10, display: "flex" }}>
           <Debugger
             title="Editor State"
             item={() => this.state.editorState.getCurrentContent()}

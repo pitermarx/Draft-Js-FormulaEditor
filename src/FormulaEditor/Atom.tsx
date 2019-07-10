@@ -1,5 +1,7 @@
 import * as React from "react";
 import { ContentState, ContentBlock } from "draft-js";
+import { BubbleType } from "./bubbleUtils";
+import { getEntity } from "./utils";
 
 interface IAtomProps {
   contentState: ContentState;
@@ -10,15 +12,37 @@ interface IAtomProps {
 
 export default class extends React.Component<IAtomProps> {
   render() {
-    const key = this.props.block.getEntityAt(0);
-    const type = key && this.props.contentState.getEntity(key).getType();
+    const entity = getEntity(this.props.contentState, this.props.block);
+    const type = entity && (entity.getType() as BubbleType);
     switch (type) {
       case "object-bubble":
-        return <span className="obj-bubble">{this.props.block.getText()}</span>;
+        return (
+          <ObjectBubble {...this.props.blockProps} {...entity.getData()} />
+        );
+
       case "function":
         return <span className="function">{this.props.block.getText()}</span>;
+
       default:
         return this.props.block.getText();
     }
   }
 }
+
+const ObjectBubble = ({
+  objectId,
+  propertyId,
+  getObjectName,
+  getPropertyName
+}) => {
+  const [objName, setObjName] = React.useState(objectId);
+  const [propName, setPropName] = React.useState(propertyId);
+  getObjectName(objectId).then(setObjName);
+  getPropertyName(propertyId).then(setPropName);
+
+  return (
+    <span className="obj-bubble">
+      [{objName}:{propName}]
+    </span>
+  );
+};

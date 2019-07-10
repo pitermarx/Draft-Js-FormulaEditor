@@ -22,12 +22,15 @@ const log = x => {
 const App = () => {
   const [formula, setFormula] = React.useState("[1:99] + SIN ([2:57] * [7])");
   return (
-    <FormulaEditor
-      value={formula}
-      onChange={f => setFormula(log(f))}
-      getObjectName={id => Promise.resolve(objCache[id] || id)}
-      getPropertyName={id => Promise.resolve(propCache[id] || id)}
-    />
+    <>
+      <div style={{ marginTop: 30 }}>{formula}</div>
+      <FormulaEditor
+        value={formula}
+        onChange={f => setFormula(log(f))}
+        getObjectName={id => Promise.resolve(objCache[id] || id)}
+        getPropertyName={id => Promise.resolve(propCache[id] || id)}
+      />
+    </>
   );
 };
 
