@@ -8,7 +8,8 @@ import {
 } from "draft-js";
 import { Map } from "immutable";
 import Debugger from "../Debugger";
-import { stateToFormula, insertText } from "./utils";
+import { stateToFormula, onChange } from "./utils";
+import Atom from "./Atom";
 
 interface IFormulaEditorProps {
   value?: string;
@@ -23,10 +24,18 @@ const extendedBlockRenderMap = DefaultDraftBlockRenderMap.merge(
 );
 
 // Renders empty blocks as spans to prevent newlines
-const blockRender = (b: ContentBlock) =>
-  b.getData().get("isEmpty") && {
-    component: () => <span />
-  };
+function blockRender(b: ContentBlock) {
+  if (b.getText() === "")
+    return {
+      component: () => null
+    };
+
+  if (b.getType() === "atomic") {
+    return {
+      component: Atom
+    };
+  }
+}
 
 interface IFormulaEditorState {
   editorState: EditorState;
@@ -41,7 +50,7 @@ export default class extends React.Component<
     super(p);
     this.state = {
       formula: p.value,
-      editorState: insertText(p.value)
+      editorState: onChange(p.value)
     };
   }
 
@@ -50,7 +59,7 @@ export default class extends React.Component<
     prevState?: IFormulaEditorState
   ) =>
     (!prevState || newProps.value !== prevState.formula) && {
-      editorState: insertText(newProps.value),
+      editorState: onChange(newProps.value),
       formula: newProps.value
     };
 
@@ -63,27 +72,40 @@ export default class extends React.Component<
   };
 
   handleChar = (chars: string, editorState: EditorState): DraftHandleValue => {
-    this.onChange(insertText(chars, editorState));
+    this.onChange(onChange(chars, editorState));
     return "handled";
   };
 
   render() {
     return (
       <>
-        <Editor
-          blockRenderMap={extendedBlockRenderMap}
-          blockRendererFn={blockRender}
-          editorState={this.state.editorState}
-          onChange={this.onChange}
-          // prevent newlines
-          handleReturn={() => "handled"}
-          handleBeforeInput={this.handleChar}
-          handlePastedText={(text, html, state) => this.handleChar(text, state)}
-        />
-        <Debugger
-          focusedEntity={undefined}
-          editorState={this.state.editorState}
-        />
+        <div
+          style={{
+            background: "white",
+            top: "8px",
+            position: "fixed",
+            width: "100%"
+          }}
+        >
+          <Editor
+            blockRenderMap={extendedBlockRenderMap}
+            blockRendererFn={blockRender}
+            editorState={this.state.editorState}
+            onChange={this.onChange}
+            // prevent newlines
+            handleReturn={() => "handled"}
+            handleBeforeInput={this.handleChar}
+            handlePastedText={(text, html, state) =>
+              this.handleChar(text, state)
+            }
+          />
+        </div>
+        <div style={{ marginTop: 30 }}>
+          <Debugger
+            focusedEntity={undefined}
+            editorState={this.state.editorState}
+          />
+        </div>
       </>
     );
   }

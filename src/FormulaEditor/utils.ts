@@ -3,9 +3,9 @@ import {
   Modifier,
   SelectionState,
   ContentBlock,
-  AtomicBlockUtils
+  AtomicBlockUtils,
+  ContentState
 } from "draft-js";
-import { Map } from "immutable";
 
 export const stateToFormula = (editorState: EditorState): string =>
   sanitizeChars(editorState.getCurrentContent().getPlainText());
@@ -29,7 +29,12 @@ export const selectRegex = (key: string, regex: RegExpMatchArray) =>
     focusKey: key
   });
 
-export function insertText(chars: string, editorState?: EditorState) {
+export const advanceSelection = (selection: SelectionState, offset: number) =>
+  selection
+    .set("anchorOffset", selection.getAnchorOffset() + offset)
+    .set("focusOffset", selection.getFocusKey() + offset) as SelectionState;
+
+export function onChange(chars: string, editorState?: EditorState) {
   editorState = editorState || EditorState.createEmpty();
   let content = editorState.getCurrentContent();
   let selection = editorState.getSelection();
@@ -41,8 +46,14 @@ export function insertText(chars: string, editorState?: EditorState) {
   if (selection.getAnchorKey() !== selection.getFocusKey()) {
     return editorState;
   }
-  if (content.getBlockForKey(selection.getAnchorKey()).getType() === "atomic") {
-    return editorState;
+  const focusedBlock = content.getBlockForKey(selection.getAnchorKey());
+  if (focusedBlock.getType() === "atomic") {
+    const entityKey = focusedBlock.getEntityAt(0);
+    if (content.getEntity(entityKey).getMutability() === "IMMUTABLE") {
+      return editorState;
+    } else {
+      content = Modifier.setBlockType(content, selection, "unstyled");
+    }
   }
 
   // if selection is not collapsed, delete content first
@@ -56,54 +67,50 @@ export function insertText(chars: string, editorState?: EditorState) {
   content = Modifier.insertText(content, selection, chars);
   editorState = EditorState.push(editorState, content, "insert-characters");
 
-  editorState = changeBlockTypes(editorState);
+  editorState = insertAtomicBlocks(
+    editorState,
+    /\[\d+:?\d*\]/,
+    (c: ContentState) => c.createEntity("object-bubble", "IMMUTABLE")
+  );
 
-  return markEmptyBlocks(editorState);
+  editorState = insertAtomicBlocks(
+    editorState,
+    /[A-Z]+/,
+    (content: ContentState) => content.createEntity("function", "MUTABLE")
+  );
+
+  return editorState;
 }
 
-function changeBlockTypes(editorState: EditorState) {
+function insertAtomicBlocks(
+  editorState: EditorState,
+  pattern: RegExp,
+  createEntity: (ContentState) => ContentState
+) {
   let content = editorState.getCurrentContent();
 
   const blockToChange = content
     .getBlocksAsArray()
-    .filter(
-      b => b.getType() !== "atomic" && /\[\d+:?\d*\]/.test(b.getText())
-    )[0];
+    .filter(b => b.getType() !== "atomic" && pattern.test(b.getText()))[0];
 
   if (!blockToChange) {
     return editorState;
   }
 
   const key = blockToChange.getKey();
-  const match = /\[\d+:?\d*\]/.exec(blockToChange.getText());
+  const match = pattern.exec(blockToChange.getText());
 
   content = Modifier.removeRange(content, selectRegex(key, match), "backward");
   editorState = EditorState.push(editorState, content, "remove-range");
 
-  content.createEntity("object-bubble", "IMMUTABLE");
+  content = createEntity(content);
   editorState = AtomicBlockUtils.insertAtomicBlock(
     editorState,
     content.getLastCreatedEntityKey(),
     match[0]
   );
 
-  editorState = changeBlockTypes(editorState);
+  editorState = insertAtomicBlocks(editorState, pattern, createEntity);
 
   return editorState;
-}
-
-function markEmptyBlocks(editorState: EditorState): EditorState {
-  let content = editorState.getCurrentContent();
-  content
-    .getBlocksAsArray()
-    .filter(b => !b.getText())
-    .forEach(b => {
-      content = Modifier.setBlockData(
-        content,
-        selectBlock(b, 0),
-        Map({ isEmpty: true })
-      );
-    });
-
-  return EditorState.push(editorState, content, "change-block-data");
 }
