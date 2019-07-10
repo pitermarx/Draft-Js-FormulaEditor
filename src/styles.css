@@ -1,0 +1,26 @@
+.DraftEditor-root {
+  border: black 1px solid;
+}
+.DraftEditor-root div {
+  display: inline;
+}
+.popover {
+  border: 1px solid #ae6e6e;
+  margin-top: 0.4em;
+  background-color: #d4cdcd;
+  padding: 0 5px;
+}
+.popover > div {
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.function {
+  background-color: rgba(0, 300, 0, 0.2);
+}
+.obj-suggestion {
+  background-color: rgba(300, 0, 0, 0.2);
+}
+.obj-bubble {
+  background-color: rgba(0, 0, 0, 0.2);
+}
