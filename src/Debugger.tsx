@@ -1,15 +1,15 @@
 import React from "react";
 import { convertToRaw } from "draft-js";
-import { IFormulaEditorState } from "./plugin/formulaEditor";
-function toJSON(o, sep = " ") {
-  return o && JSON.stringify(o, null, sep);
-}
-export default ({ editorState, focusedEntity }: IFormulaEditorState) => (
-  <>
-    <pre>{toJSON(focusedEntity)}</pre>
-    <pre>{toJSON(editorState && editorState.getSelection(), " ")}</pre>
-    <pre>
-      {toJSON(editorState && convertToRaw(editorState.getCurrentContent()))}
-    </pre>
-  </>
+
+const toJSON = (o, sep = " ") => {
+  o = typeof o === "function" ? o() : o;
+  if (o.entityMap) o = convertToRaw(o);
+  return o && <pre>{JSON.stringify(o, null, sep)}</pre>;
+};
+
+export default ({ title, item }) => (
+  <div>
+    <b>{title}</b>
+    {toJSON(item)}
+  </div>
 );

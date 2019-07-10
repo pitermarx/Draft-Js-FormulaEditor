@@ -23,17 +23,13 @@ const extendedBlockRenderMap = DefaultDraftBlockRenderMap.merge(
   Map({ atomic: { element: "span" } })
 );
 
-// Renders empty blocks as spans to prevent newlines
 function blockRender(b: ContentBlock) {
   if (b.getText() === "")
-    return {
-      component: () => null
-    };
+    // Renders empty blocks as null to prevent newlines
+    return { component: () => null };
 
   if (b.getType() === "atomic") {
-    return {
-      component: Atom
-    };
+    return { component: Atom };
   }
 }
 
@@ -100,10 +96,14 @@ export default class extends React.Component<
             }
           />
         </div>
-        <div style={{ marginTop: 30 }}>
+        <div style={{ marginTop: 30, display: "flex" }}>
           <Debugger
-            focusedEntity={undefined}
-            editorState={this.state.editorState}
+            title="Editor State"
+            item={() => this.state.editorState.getCurrentContent()}
+          />
+          <Debugger
+            title="Selection"
+            item={() => this.state.editorState.getSelection()}
           />
         </div>
       </>

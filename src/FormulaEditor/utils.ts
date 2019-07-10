@@ -1,38 +1,16 @@
 import {
   EditorState,
   Modifier,
-  SelectionState,
-  ContentBlock,
   AtomicBlockUtils,
   ContentState
 } from "draft-js";
+import { selectRegex } from "./selectionUtils";
 
 export const stateToFormula = (editorState: EditorState): string =>
   sanitizeChars(editorState.getCurrentContent().getPlainText());
 
 export const sanitizeChars = (chars: string): string =>
   chars.replace(/[^a-zA-Z0-9[()+-\\*:\s\]]/g, "");
-
-export const selectBlock = (block: ContentBlock, offset: number) =>
-  new SelectionState({
-    anchorOffset: 0,
-    focusOffset: offset,
-    anchorKey: block.getKey(),
-    focusKey: block.getKey()
-  });
-
-export const selectRegex = (key: string, regex: RegExpMatchArray) =>
-  new SelectionState({
-    anchorOffset: regex.index,
-    focusOffset: regex.index + regex[0].length,
-    anchorKey: key,
-    focusKey: key
-  });
-
-export const advanceSelection = (selection: SelectionState, offset: number) =>
-  selection
-    .set("anchorOffset", selection.getAnchorOffset() + offset)
-    .set("focusOffset", selection.getFocusKey() + offset) as SelectionState;
 
 export function onChange(chars: string, editorState?: EditorState) {
   editorState = editorState || EditorState.createEmpty();
