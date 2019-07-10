@@ -3,7 +3,8 @@ import {
   Editor,
   EditorState,
   DefaultDraftBlockRenderMap,
-  DraftHandleValue
+  DraftHandleValue,
+  ContentBlock
 } from "draft-js";
 import { Map } from "immutable";
 import Debugger from "../Debugger";
@@ -16,9 +17,16 @@ interface IFormulaEditorProps {
   getPropertyName: (id: number) => Promise<string>;
 }
 
+// change atomic blocks to spans (instead of "figure")
 const extendedBlockRenderMap = DefaultDraftBlockRenderMap.merge(
-  Map({ atomic: { element: "div" } })
+  Map({ atomic: { element: "span" } })
 );
+
+// Renders empty blocks as spans to prevent newlines
+const blockRender = (b: ContentBlock) =>
+  b.getData().get("isEmpty") && {
+    component: () => <span />
+  };
 
 interface IFormulaEditorState {
   editorState: EditorState;
@@ -64,6 +72,7 @@ export default class extends React.Component<
       <>
         <Editor
           blockRenderMap={extendedBlockRenderMap}
+          blockRendererFn={blockRender}
           editorState={this.state.editorState}
           onChange={this.onChange}
           // prevent newlines

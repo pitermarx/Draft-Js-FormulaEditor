@@ -5,6 +5,7 @@ import {
   ContentBlock,
   AtomicBlockUtils
 } from "draft-js";
+import { Map } from "immutable";
 
 export const stateToFormula = (editorState: EditorState): string =>
   sanitizeChars(editorState.getCurrentContent().getPlainText());
@@ -56,14 +57,13 @@ export function insertText(chars: string, editorState?: EditorState) {
   editorState = EditorState.push(editorState, content, "insert-characters");
 
   editorState = changeBlockTypes(editorState);
-  editorState = changeBlockTypes(editorState);
-  editorState = changeBlockTypes(editorState);
-  editorState = changeBlockTypes(editorState);
-  return editorState;
+
+  return markEmptyBlocks(editorState);
 }
 
 function changeBlockTypes(editorState: EditorState) {
   let content = editorState.getCurrentContent();
+
   const blockToChange = content
     .getBlocksAsArray()
     .filter(
@@ -75,31 +75,35 @@ function changeBlockTypes(editorState: EditorState) {
   }
 
   const key = blockToChange.getKey();
-  const fullBlockSelection = selectBlock(blockToChange, 0);
   const match = /\[\d+:?\d*\]/.exec(blockToChange.getText());
-  const text = match[0];
 
-  content = Modifier.splitBlock(content, selectRegex(key, match));
-  content = Modifier.insertText(content, fullBlockSelection, text);
-  editorState = EditorState.push(editorState, content, "insert-characters");
+  content = Modifier.removeRange(content, selectRegex(key, match), "backward");
+  editorState = EditorState.push(editorState, content, "remove-range");
 
+  content.createEntity("object-bubble", "IMMUTABLE");
   editorState = AtomicBlockUtils.insertAtomicBlock(
     editorState,
-    content
-      .createEntity("object-bubble", "IMMUTABLE")
-      .getLastCreatedEntityKey(),
-    ""
-  );
-  content = Modifier.setBlockType(content, fullBlockSelection, "atomic");
-
-  content = content.createEntity("object-bubble", "IMMUTABLE");
-  content = Modifier.applyEntity(
-    content,
-    fullBlockSelection,
-    content.getLastCreatedEntityKey()
+    content.getLastCreatedEntityKey(),
+    match[0]
   );
 
-  editorState = EditorState.push(editorState, content, "change-block-data");
+  editorState = changeBlockTypes(editorState);
 
   return editorState;
+}
+
+function markEmptyBlocks(editorState: EditorState): EditorState {
+  let content = editorState.getCurrentContent();
+  content
+    .getBlocksAsArray()
+    .filter(b => !b.getText())
+    .forEach(b => {
+      content = Modifier.setBlockData(
+        content,
+        selectBlock(b, 0),
+        Map({ isEmpty: true })
+      );
+    });
+
+  return EditorState.push(editorState, content, "change-block-data");
 }
